@@ -402,8 +402,13 @@ pub async fn ecdsa_quote_verification(quote: &[u8]) -> Result<()> {
         p_data: &mut supp_data as *mut sgx_ql_qv_supplemental_t as *mut u8,
     };
 
-    // Call DCAP quote verify library to set QvE loading policy to multi-thread
-    // We only need to set the policy once; otherwise, it will return the error code 0xe00c (SGX_QL_UNSUPPORTED_LOADING_POLICY)
+    // NOTE: There is an issue with the quote verification in qvl library
+    // which causes handling verification requests serially.
+    // This affects the `tee_verify_quote` function.
+    // Tracking issue: https://github.com/intel/SGXDataCenterAttestationPrimitives/issues/402
+    // Workaround: 
+    //     Call DCAP quote verify library to set QvE loading policy (sgx_qv_set_enclave_load_policy) to multi-thread
+    //     We only need to set the policy once; otherwise, it will return the error code 0xe00c (SGX_QL_UNSUPPORTED_LOADING_POLICY)
     static INIT: std::sync::Once = std::sync::Once::new();
     INIT.call_once(|| {
         match sgx_qv_set_enclave_load_policy(
